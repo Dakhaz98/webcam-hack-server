@@ -50,6 +50,12 @@ app.post('/capture', (req, res) => {
         res.status(500).json({ error: 'Failed to save image' });
     }
 });
+app.get('/captures', (req, res) => {
+    fs.readdir(path.join(__dirname, 'captures'), (err, files) => {
+        if (err) return res.send("Error reading directory");
+        res.json(files);
+    });
+})
 
 app.use('/captures', express.static(path.join(__dirname, 'captures')));
 // تشغيل الخادم
